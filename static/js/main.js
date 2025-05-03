@@ -1,289 +1,281 @@
 document.addEventListener('DOMContentLoaded', function() {
-    // Elements
-    const findPathBtn = document.getElementById('find-path-btn');
-    const toggleDijkstra = document.getElementById('toggle-dijkstra');
-    const toggleAstar = document.getElementById('toggle-astar');
-    const tabDijkstra = document.getElementById('tab-dijkstra');
-    const tabAstar = document.getElementById('tab-astar');
-    const loadingElement = document.getElementById('loading');
-    const pathInfo = document.getElementById('path-info');
-    const mapElement = document.getElementById('map');
-    const distanceValue = document.getElementById('distance-value');
-    const algorithmValue = document.getElementById('algorithm-value');
-    const nodesValue = document.getElementById('nodes-value');
-    
-    // Current algorithm state
-    let currentAlgorithm = 'dijkstra';
-    let lastCalculatedAlgorithm = null;
-    
-    // Store path data for comparison
-    let pathResults = {
-        dijkstra: null,
-        astar: null
-    };
-    
-    // Event listeners
-    if (findPathBtn) {
-        findPathBtn.addEventListener('click', calculatePath);
+    let timerInterval = null; // Variable to hold the timer interval
+    let startTime = 0; // Variable to hold the start time
+
+    document.getElementById('generateBtn').addEventListener('click', function() {
+        // Show loading indicator and hide others
+        document.getElementById('loading').classList.remove('d-none');
+        document.getElementById('timetableContainer').classList.add('d-none');
+        document.getElementById('errorMessage').classList.add('d-none');
         
-        // Add pulse animation to button to draw attention
-        setTimeout(() => {
-            findPathBtn.classList.add('is-pulse');
-            setTimeout(() => {
-                findPathBtn.classList.remove('is-pulse');
-            }, 2000);
-        }, 1000);
-    }
-    
-    // Algorithm selection listeners
-    if (toggleDijkstra) {
-        toggleDijkstra.addEventListener('click', () => {
-            setActiveAlgorithm('dijkstra');
-        });
-    }
-    
-    if (toggleAstar) {
-        toggleAstar.addEventListener('click', () => {
-            setActiveAlgorithm('astar');
-        });
-    }
-    
-    if (tabDijkstra) {
-        tabDijkstra.addEventListener('click', () => {
-            setActiveAlgorithm('dijkstra');
-        });
-    }
-    
-    if (tabAstar) {
-        tabAstar.addEventListener('click', () => {
-            setActiveAlgorithm('astar');
-        });
-    }
-    
-    // Smooth scrolling for anchor links
-    document.querySelectorAll('a[href^="#"]').forEach(anchor => {
-        anchor.addEventListener('click', function (e) {
-            e.preventDefault();
-            document.querySelector(this.getAttribute('href')).scrollIntoView({
-                behavior: 'smooth'
+        // Reset and start timer
+        startTime = Date.now();
+        const elapsedTimeElement = document.getElementById('elapsedTime');
+        elapsedTimeElement.textContent = 'Elapsed time: 0s'; // Reset display
+        
+        // Clear any existing timer before starting a new one
+        if (timerInterval) {
+            clearInterval(timerInterval);
+        }
+
+        timerInterval = setInterval(() => {
+            const elapsedSeconds = Math.floor((Date.now() - startTime) / 1000);
+            elapsedTimeElement.textContent = `Elapsed time: ${elapsedSeconds}s`;
+        }, 1000); // Update every second
+
+        // Use absolute path for API endpoint
+        fetch('/CPS_AI/generate', { method: 'POST' })
+            .then(response => response.json())
+            .then(data => {
+                clearInterval(timerInterval); // Stop the timer
+                timerInterval = null; // Clear interval variable
+                document.getElementById('loading').classList.add('d-none');
+                
+                if (data.success) {
+                    document.getElementById('timetableContainer').classList.remove('d-none');
+                    
+                    // Access common lectures that are shared across all groups
+                    const commonLectures = data.timetables.common_lectures || {};
+                    
+                    // Generate timetable for each group
+                    for (let group = 1; group <= 6; group++) {
+                        const groupKey = `group_${group}`;
+                        const groupSpecificData = data.timetables[groupKey] || {};
+                        const mergedData = { ...commonLectures, ...groupSpecificData };
+                        generateTimetableForGroup(group, mergedData);
+                    }
+                    
+                    // Update teacher statistics and parallel sessions
+                    updateTeacherStatistics(data.statistics.teacher_workdays);
+                    displayParallelSessions(data.timetables); // Ensure this is called
+                    
+                    // Optionally display final execution time from backend stats
+                    const finalTimeElement = document.getElementById('elapsedTime'); // Reuse element or create new one
+                    if (finalTimeElement && data.statistics && data.statistics.execution_time) {
+                         finalTimeElement.textContent = `Backend processing time: ${data.statistics.execution_time}`;
+                         // You might want to display this elsewhere, not in the loading div
+                    }
+
+                } else {
+                    document.getElementById('errorMessage').classList.remove('d-none');
+                    document.getElementById('errorMessage').querySelector('.error-text').textContent = data.message;
+                }
+            })
+            .catch((error) => {
+                clearInterval(timerInterval); // Stop the timer on error too
+                timerInterval = null; // Clear interval variable
+                document.getElementById('loading').classList.add('d-none');
+                document.getElementById('errorMessage').classList.remove('d-none');
+                document.getElementById('errorMessage').querySelector('.error-text').textContent = 'An error occurred. Please try again.';
+                console.error('Error:', error);
             });
-        });
     });
-    
-    // Set active algorithm
-    function setActiveAlgorithm(algorithm) {
-        currentAlgorithm = algorithm;
-        
-        // Update toggle UI
-        if (toggleDijkstra && toggleAstar) {
-            if (algorithm === 'dijkstra') {
-                toggleDijkstra.querySelector('.algorithm-toggle-inner').classList.add('is-active');
-                toggleAstar.querySelector('.algorithm-toggle-inner').classList.remove('is-active');
-            } else {
-                toggleDijkstra.querySelector('.algorithm-toggle-inner').classList.remove('is-active');
-                toggleAstar.querySelector('.algorithm-toggle-inner').classList.add('is-active');
+
+    // Function to generate timetable for a specific group
+    function generateTimetableForGroup(groupNumber, timetableData) {
+        const timetableBody = document.getElementById(`timetableBody${groupNumber}`);
+        timetableBody.innerHTML = '';
+
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"];
+        const maxSlots = 5;
+
+        days.forEach(day => {
+            const row = document.createElement('tr');
+            const dayCell = document.createElement('td');
+            dayCell.innerHTML = `<i class="bi bi-calendar-day me-2"></i>${day}`;
+            dayCell.className = 'fw-bold';
+            row.appendChild(dayCell);
+
+            for (let slot = 1; slot <= maxSlots; slot++) {
+                const slotCell = document.createElement('td');
+                slotCell.className = 'timetable-cell';
+                
+                if (day === "Tuesday" && slot > 3) {
+                    slotCell.className = 'bg-light text-muted';
+                    slotCell.innerHTML = '<i class="bi bi-slash-circle me-2"></i>No Classes';
+                } else {
+                    const courseTimeSlot = `${day}_${slot}`;
+                    // Find session assigned to this slot in the merged data
+                    const assignedSession = Object.entries(timetableData).find(([key, value]) => value === courseTimeSlot);
+                    
+                    if (assignedSession) {
+                        const [sessionKey, assignedValue] = assignedSession; // Value is the time slot
+                        
+                        // Determine if this is a lecture (from common_lectures keys)
+                        const isLecture = sessionKey.includes('_lecture');
+                        // Extract base course name and type (td/tp/lecture)
+                        let courseName = sessionKey;
+                        let courseType = 'unknown';
+
+                        if (isLecture) {
+                            courseName = sessionKey.replace('_lecture', '');
+                            courseType = 'lecture';
+                        } else {
+                            // Handle keys like "CourseName_td" or "CourseName_tp"
+                            const parts = sessionKey.split('_');
+                            if (parts.length >= 2) {
+                                courseType = parts.pop(); // Get last part (td/tp)
+                                courseName = parts.join('_'); // Rejoin remaining parts for course name
+                            }
+                        }
+                        
+                        slotCell.innerHTML = `
+                            <div class="course-item ${courseType} ${isLecture ? 'shared-lecture' : ''}">
+                                <div class="fw-bold">${courseName}</div>
+                                <div class="small text-muted">${courseType.toUpperCase()} ${isLecture ? '(Shared)' : ''}</div>
+                            </div>
+                        `;
+                    } else {
+                         // Check if any session *should* be here but is unscheduled
+                         const unscheduledSession = Object.entries(timetableData).find(([key, value]) => value === "Unscheduled" && key.includes(`_${day}_${slot}`)); // This check is complex, maybe simplify
+
+                         // Simplified: Just leave cell empty if no session is scheduled
+                         // If you want to show unscheduled, the backend needs to provide that info differently
+                    }
+                }
+                row.appendChild(slotCell);
             }
-        }
-        
-        // Update tab UI
-        if (tabDijkstra && tabAstar) {
-            if (algorithm === 'dijkstra') {
-                tabDijkstra.classList.add('is-active');
-                tabAstar.classList.remove('is-active');
-            } else {
-                tabDijkstra.classList.remove('is-active');
-                tabAstar.classList.add('is-active');
-            }
-        }
-        
-        // Update button color based on algorithm
-        if (findPathBtn) {
-            if (algorithm === 'dijkstra') {
-                findPathBtn.classList.remove('is-danger');
-                findPathBtn.classList.add('is-primary');
-            } else {
-                findPathBtn.classList.remove('is-primary');
-                findPathBtn.classList.add('is-danger');
-            }
+            timetableBody.appendChild(row);
+        });
+
+        // Add a row/message indicating any unscheduled sessions for this group
+        const unscheduledItems = Object.entries(timetableData).filter(([key, value]) => value === "Unscheduled" && !key.includes('_lecture')); // Filter group-specific unscheduled
+        if (unscheduledItems.length > 0) {
+            const unscheduledRow = document.createElement('tr');
+            const unscheduledCell = document.createElement('td');
+            unscheduledCell.colSpan = maxSlots + 1; // Span all columns
+            unscheduledCell.className = 'text-danger small p-2';
+            unscheduledCell.innerHTML = `<i class="bi bi-exclamation-triangle me-1"></i> Unscheduled: ${unscheduledItems.map(([key]) => key.replace(/_group\d+$/, '')).join(', ')}`;
+            timetableBody.appendChild(unscheduledRow);
         }
     }
     
-    // Calculate path using selected algorithm
-    function calculatePath() {
-        // Show loading
-        if (loadingElement) loadingElement.classList.remove('is-hidden');
-        if (pathInfo) pathInfo.classList.add('is-hidden');
+    // New function to display parallel session information
+    function displayParallelSessions(timetables) {
+        const statsContainer = document.getElementById('teacherStats');
+        if (!statsContainer) return;
         
-        // If we already calculated this algorithm, show the existing result
-        if (pathResults[currentAlgorithm] && currentAlgorithm === lastCalculatedAlgorithm) {
-            showPathResult(pathResults[currentAlgorithm]);
-            return;
+        // Create map of time slots to sessions
+        let slotMap = {};
+        
+        // Process all group-specific sessions
+        for (let i = 1; i <= 6; i++) {
+            const groupKey = `group_${i}`;
+            const groupData = timetables[groupKey] || {};
+            
+            for (const [session, timeSlot] of Object.entries(groupData)) {
+                if (timeSlot !== "Unscheduled") { // Only map scheduled slots
+                    if (!slotMap[timeSlot]) {
+                        slotMap[timeSlot] = [];
+                    }
+                    // Clean session name for display
+                    const cleanedSession = session.replace(/_group\d+$/, '');
+                    slotMap[timeSlot].push(`Group ${i}: ${cleanedSession}`);
+                }
+            }
         }
         
-        // Reset UI
-        if (mapElement) {
-            mapElement.innerHTML = '';
+        // Find slots with parallel sessions (more than 1 group)
+        const parallelSlots = Object.entries(slotMap)
+            .filter(([slot, sessions]) => sessions.length > 1)
+            .sort((a, b) => a[0].localeCompare(b[0]));
             
-            // Show calculating message with animation
-            const loadingMessage = document.createElement('div');
-            loadingMessage.className = 'has-text-centered initial-map-message';
-            loadingMessage.innerHTML = `
-                <div class="loading-container">
-                    <div class="loading-spinner"></div>
-                    <div class="loading-text">
-                        <p class="is-size-5 mb-2">Calculating optimal route with</p>
-                        <p class="is-size-4 has-text-weight-bold">${currentAlgorithm === 'dijkstra' ? 'Dijkstra\'s Algorithm' : 'A* Algorithm'}</p>
+        if (parallelSlots.length > 0) {
+            let parallelHTML = `
+                <div class="card mb-4">
+                    <div class="card-header bg-light">
+                        <h5 class="mb-0">
+                            <i class="bi bi-grid-3x3-gap me-2"></i>
+                            Parallel Sessions (Different Groups)
+                        </h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="table-responsive">
+                            <table class="table table-sm">
+                                <thead>
+                                    <tr>
+                                        <th>Time Slot</th>
+                                        <th>Parallel Sessions</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+            `;
+            
+            for (const [slot, sessions] of parallelSlots) {
+                parallelHTML += `
+                    <tr>
+                        <td>${slot}</td>
+                        <td>${sessions.join('<br>')}</td>
+                    </tr>
+                `;
+            }
+            
+            parallelHTML += `
+                                </tbody>
+                            </table>
+                        </div>
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle me-2"></i>
+                            Multiple groups can have TD/TP sessions simultaneously, allowing for efficient use of time slots.
+                        </div>
                     </div>
                 </div>
             `;
-            mapElement.appendChild(loadingMessage);
+            
+            // Add after teacher stats
+            statsContainer.insertAdjacentHTML('beforeend', parallelHTML);
+        }
+    }
+    
+    // Function to update teacher workday statistics
+    function updateTeacherStatistics(teacherWorkdays) {
+        const statsContainer = document.getElementById('teacherStats');
+        if (!statsContainer) return;
+        
+        let statsHTML = `
+            <div class="card mb-4">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0">
+                        <i class="bi bi-person-badge me-2"></i>
+                        Teacher Workday Schedule
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm">
+                            <thead>
+                                <tr>
+                                    <th>Teacher</th>
+                                    <th>Workdays</th>
+                                    <th>Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+        `;
+        
+        for (const [teacher, days] of Object.entries(teacherWorkdays)) {
+            const daysCount = days.length;
+            const status = daysCount <= 2 
+                ? '<span class="badge bg-success">Optimal</span>' 
+                : '<span class="badge bg-warning">Exceeds Target</span>';
+            
+            statsHTML += `
+                <tr>
+                    <td>${teacher}</td>
+                    <td>${days.join(', ')}</td>
+                    <td>${status}</td>
+                </tr>
+            `;
         }
         
-        // Add subtle animation to button
-        if (findPathBtn) {
-            findPathBtn.classList.add('is-loading');
-        }
-        
-        // Send request
-        fetch('/find_path', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-            },
-            body: JSON.stringify({
-                algorithm: currentAlgorithm
-            })
-        })
-        .then(response => {
-            if (!response.ok) {
-                return response.json().then(data => {
-                    throw new Error(data.error || 'Server error');
-                });
-            }
-            return response.json();
-        })
-        .then(data => {
-            // Store result for this algorithm
-            pathResults[currentAlgorithm] = data;
-            lastCalculatedAlgorithm = currentAlgorithm;
-            
-            // Display the result
-            showPathResult(data);
-        })
-        .catch(error => {
-            // Hide loading
-            if (loadingElement) loadingElement.classList.add('is-hidden');
-            if (findPathBtn) findPathBtn.classList.remove('is-loading');
-            
-            // Show error message
-            showError(error.message);
-            
-            // Reset map
-            if (mapElement) {
-                mapElement.innerHTML = `
-                    <div class="has-text-centered initial-map-message">
-                        <div class="notification is-danger is-light">
-                            <p class="is-size-4 mb-3"><i class="fas fa-exclamation-triangle"></i></p>
-                            <p class="is-size-5">Error calculating path</p>
-                            <p class="is-size-6 mt-2">${error.message}</p>
-                        </div>
+        statsHTML += `
+                            </tbody>
+                        </table>
                     </div>
-                `;
-            }
-        });
+                </div>
+            </div>
+        `;
+        
+        statsContainer.innerHTML = statsHTML;
     }
-    
-    // Show path result
-    function showPathResult(data) {
-        // Hide loading
-        if (loadingElement) loadingElement.classList.add('is-hidden');
-        if (findPathBtn) findPathBtn.classList.remove('is-loading');
-        
-        // Display map
-        if (mapElement) {
-            mapElement.innerHTML = data.map_html;
-            
-            // Fix potential CSS issues with Leaflet map
-            const mapStyleFix = document.createElement('style');
-            mapStyleFix.innerHTML = `
-                .leaflet-container {
-                    height: 100%;
-                    width: 100%;
-                }
-            `;
-            mapElement.appendChild(mapStyleFix);
-        }
-        
-        // Update path info
-        if (distanceValue) distanceValue.textContent = data.distance;
-        if (algorithmValue) algorithmValue.textContent = data.algorithm;
-        if (nodesValue) nodesValue.textContent = data.nodes;
-        
-        // Show path info with animation
-        if (pathInfo) {
-            pathInfo.classList.remove('is-hidden');
-            pathInfo.style.opacity = '0';
-            setTimeout(() => {
-                pathInfo.style.opacity = '1';
-            }, 10);
-        }
-        
-        // Show success animation on button
-        if (findPathBtn) {
-            const originalButtonClass = findPathBtn.className;
-            const originalButtonText = findPathBtn.innerHTML;
-            
-            findPathBtn.className = 'button is-success is-medium is-fullwidth';
-            findPathBtn.innerHTML = `
-                <span class="icon">
-                    <i class="fas fa-check"></i>
-                </span>
-                <span>Path Found</span>
-            `;
-            
-            // Restore button after animation
-            setTimeout(() => {
-                findPathBtn.className = originalButtonClass;
-                findPathBtn.innerHTML = originalButtonText;
-            }, 1500);
-        }
-    }
-    
-    // Function to show errors
-    function showError(message) {
-        const notification = document.createElement('div');
-        notification.className = 'notification is-danger is-light animate__animated animate__fadeIn';
-        
-        const deleteButton = document.createElement('button');
-        deleteButton.className = 'delete';
-        deleteButton.addEventListener('click', () => {
-            notification.remove();
-        });
-        
-        notification.appendChild(deleteButton);
-        notification.appendChild(document.createTextNode(message));
-        
-        // Insert in an appropriate location
-        if (findPathBtn && findPathBtn.parentNode) {
-            findPathBtn.parentNode.insertAdjacentElement('afterend', notification);
-        } else {
-            const container = document.querySelector('.container');
-            if (container) {
-                container.insertAdjacentElement('afterbegin', notification);
-            }
-        }
-        
-        // Auto remove after 5 seconds
-        setTimeout(() => {
-            notification.classList.add('animate__fadeOut');
-            setTimeout(() => {
-                notification.remove();
-            }, 1000);
-        }, 5000);
-    }
-    
-    // Trigger path calculation after short delay
-    setTimeout(() => {
-        if (findPathBtn) findPathBtn.click();
-    }, 800);
 });

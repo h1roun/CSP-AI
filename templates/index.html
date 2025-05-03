@@ -3,362 +3,350 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Pathfinding Algorithms - Haroun Himeur</title>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bulma@0.9.4/css/bulma.min.css">
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;600;700&family=Open+Sans:wght@300;400;600&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/4.1.1/animate.min.css">
+    <title>Timetable Generator</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.7.2/font/bootstrap-icons.css" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+    <link href="/CPS_AI/static/css/styles.css" rel="stylesheet">
 </head>
 <body>
-    <!-- Main App Header -->
-    <div class="app-header">
-        <div class="container">
-            <div class="app-title-container animate__animated animate__fadeIn">
-                <div class="app-title-icon">
-                    <i class="fas fa-project-diagram"></i>
+    <div class="container py-5">
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="card mb-4">
+                    <div class="card-body text-center py-4">
+                        <h1 class="mb-4">
+                            <i class="bi bi-calendar-week text-primary me-2"></i>
+                            Timetable Generator
+                        </h1>
+                        <p class="text-muted mb-4">Generate optimized timetables for 6 groups using constraint satisfaction</p>
+                        <button id="generateBtn" class="btn btn-primary generate-btn">
+                            <i class="bi bi-play-fill me-2"></i>
+                            Generate Timetables
+                        </button>
+                    </div>
                 </div>
-                <div class="app-title-text">
-                    <h1 class="title is-2">Pathfinding Algorithms</h1>
-                    <h2 class="subtitle is-4">Comparative Analysis: Dijkstra vs A*</h2>
-                    <div class="student-name-badge">Haroun Himeur</div>
+
+                <div id="loading" class="loading-container text-center d-none">
+                    <div class="spinner-grow text-primary mb-3" role="status"></div>
+                    <h5 class="mb-3">Generating Timetables</h5>
+                    <div class="text-muted small">
+                        Applying constraints and optimizing schedules... 
+                        <span id="elapsedTime" class="d-block mt-2">Elapsed time: 0s</span>
+                    </div>
+                </div>
+
+                <div id="timetableContainer" class="timetable-container d-none">
+                    <div class="d-flex justify-content-between align-items-center mb-4">
+                        <h3 class="mb-0">
+                            <i class="bi bi-table me-2"></i>
+                            Generated Timetables
+                        </h3>
+                        <div class="legend d-flex gap-3">
+                            <span class="badge bg-primary">Lecture (Shared)</span>
+                            <span class="badge bg-success">TD</span>
+                            <span class="badge bg-warning">TP</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Group selection tabs -->
+                    <ul class="nav nav-tabs mb-3" id="groupTabs" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link active" id="group1-tab" data-bs-toggle="tab" data-bs-target="#group1" type="button" role="tab" aria-controls="group1" aria-selected="true">Group 1</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="group2-tab" data-bs-toggle="tab" data-bs-target="#group2" type="button" role="tab" aria-controls="group2" aria-selected="false">Group 2</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="group3-tab" data-bs-toggle="tab" data-bs-target="#group3" type="button" role="tab" aria-controls="group3" aria-selected="false">Group 3</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="group4-tab" data-bs-toggle="tab" data-bs-target="#group4" type="button" role="tab" aria-controls="group4" aria-selected="false">Group 4</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="group5-tab" data-bs-toggle="tab" data-bs-target="#group5" type="button" role="tab" aria-controls="group5" aria-selected="false">Group 5</button>
+                        </li>
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link" id="group6-tab" data-bs-toggle="tab" data-bs-target="#group6" type="button" role="tab" aria-controls="group6" aria-selected="false">Group 6</button>
+                        </li>
+                    </ul>
+                    
+                    <!-- Tab content for each group's timetable -->
+                    <div class="tab-content" id="groupTabsContent">
+                        <div class="tab-pane fade show active" id="group1" role="tabpanel" aria-labelledby="group1-tab">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Day / Time</th>
+                                            <th>Slot 1</th>
+                                            <th>Slot 2</th>
+                                            <th>Slot 3</th>
+                                            <th>Slot 4</th>
+                                            <th>Slot 5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="timetableBody1"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <!-- Other group tabs -->
+                        <div class="tab-pane fade" id="group2" role="tabpanel" aria-labelledby="group2-tab">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Day / Time</th>
+                                            <th>Slot 1</th>
+                                            <th>Slot 2</th>
+                                            <th>Slot 3</th>
+                                            <th>Slot 4</th>
+                                            <th>Slot 5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="timetableBody2"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="group3" role="tabpanel" aria-labelledby="group3-tab">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Day / Time</th>
+                                            <th>Slot 1</th>
+                                            <th>Slot 2</th>
+                                            <th>Slot 3</th>
+                                            <th>Slot 4</th>
+                                            <th>Slot 5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="timetableBody3"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="group4" role="tabpanel" aria-labelledby="group4-tab">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Day / Time</th>
+                                            <th>Slot 1</th>
+                                            <th>Slot 2</th>
+                                            <th>Slot 3</th>
+                                            <th>Slot 4</th>
+                                            <th>Slot 5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="timetableBody4"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="group5" role="tabpanel" aria-labelledby="group5-tab">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Day / Time</th>
+                                            <th>Slot 1</th>
+                                            <th>Slot 2</th>
+                                            <th>Slot 3</th>
+                                            <th>Slot 4</th>
+                                            <th>Slot 5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="timetableBody5"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="tab-pane fade" id="group6" role="tabpanel" aria-labelledby="group6-tab">
+                            <div class="table-responsive">
+                                <table class="table table-bordered">
+                                    <thead>
+                                        <tr>
+                                            <th>Day / Time</th>
+                                            <th>Slot 1</th>
+                                            <th>Slot 2</th>
+                                            <th>Slot 3</th>
+                                            <th>Slot 4</th>
+                                            <th>Slot 5</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="timetableBody6"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Add teacher statistics section -->
+                    <div id="teacherStats" class="mt-4"></div>
+                </div>
+
+                <div id="explanationSection" class="card mt-4">
+                    <div class="card-body">
+                        <h3 class="mb-4">
+                            <i class="bi bi-diagram-3 text-primary me-2"></i>
+                            Implementation Details
+                        </h3>
+                        
+                        <div class="implementation-details">
+                            <div class="mb-4">
+                                <h5><i class="bi bi-bug me-2"></i>Problem Formulation</h5>
+                                <p class="text-muted">This timetable is generated using Constraint Satisfaction Problem (CSP) techniques with the following components:</p>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Variables</h6>
+                                <ul class="list-group">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        Course Sessions: Each course has lecture, TD, and some have TP sessions
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-check-circle-fill text-success me-2"></i>
+                                        Time Slots: 5 slots per day (except Tuesday with 3 slots)
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Variables Declaration</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-python">
+# Variables
+days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]
+slots_per_day = {
+    "Sunday": 5, "Monday": 5, "Tuesday": 3, 
+    "Wednesday": 5, "Thursday": 5
+}
+time_slots = [f"{day}_{slot}" for day in days 
+             for slot in range(1, slots_per_day[day] + 1)]
+
+# Course variables
+for course in courses:
+    if "Réseaux 2" in course or "Artificial Intelligence" in course:
+        problem.addVariables([f"{course}_lecture", f"{course}_td", 
+                            f"{course}_tp"], time_slots)
+    else:
+        problem.addVariables([f"{course}_lecture", f"{course}_td"], 
+                           time_slots)</code></pre>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Hard Constraints</h6>
+                                <ul class="list-group">
+                                    <li class="list-group-item">
+                                        <i class="bi bi-shield-fill-check text-primary me-2"></i>
+                                        No more than 3 successive slots
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-shield-fill-check text-primary me-2"></i>
+                                        No overlapping sessions for the same course
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-shield-fill-check text-primary me-2"></i>
+                                        Tuesday limited to 3 morning slots
+                                    </li>
+                                    <li class="list-group-item">
+                                        <i class="bi bi-shield-fill-check text-primary me-2"></i>
+                                        Different courses must have different slot allocations
+                                    </li>
+                                </ul>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Hard Constraints Implementation</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-python">
+# Maximum three successive slots constraint
+def max_three_successive(*args):
+    slots = sorted([int(slot.split('_')[1]) for slot in args])
+    return (all(abs(slots[i] - slots[i - 1]) <= 1 
+            for i in range(1, len(slots))) 
+            and len(slots) <= 3)
+
+# No overlapping sessions constraint
+def no_overlap(lecture, td, tp=None):
+    if tp:
+        return lecture != td and lecture != tp and td != tp
+    return lecture != td
+
+# Adding constraints to problem
+for course in courses:
+    if has_tp(course):
+        problem.addConstraint(max_three_successive, 
+            [f"{course}_lecture", f"{course}_td", f"{course}_tp"])
+        problem.addConstraint(no_overlap,
+            (f"{course}_lecture", f"{course}_td", f"{course}_tp"))
+    else:
+        problem.addConstraint(max_three_successive, 
+            [f"{course}_lecture", f"{course}_td"])
+        problem.addConstraint(no_overlap,
+            (f"{course}_lecture", f"{course}_td"))</code></pre>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="fw-bold">Algorithms Used</h6>
+                                <div class="algorithm-cards row g-3">
+                                    <div class="col-md-4">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title"><i class="bi bi-braces me-2"></i>AC3</h6>
+                                                <p class="card-text small">Used for constraint propagation and domain reduction</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title"><i class="bi bi-diagram-2 me-2"></i>MRV</h6>
+                                                <p class="card-text small">Minimum Remaining Values for variable selection</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-4">
+                                        <div class="card h-100">
+                                            <div class="card-body">
+                                                <h6 class="card-title"><i class="bi bi-graph-up me-2"></i>Backtracking</h6>
+                                                <p class="card-text small">For systematic exploration of solution space</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="mb-4">
+                                <h6 class="fw-bold">AC3 Algorithm Implementation</h6>
+                                <div class="code-block">
+                                    <pre><code class="language-python">
+def AC3(csp):
+    queue = [(Xi, Xk) for Xi in csp.variables 
+            for Xk in csp.neighbors[Xi]]
+    while queue:
+        (Xi, Xj) = queue.pop(0)
+        if revise(csp, Xi, Xj):
+            if len(csp.domains[Xi]) == 0:
+                return False
+            for Xk in csp.neighbors[Xi]:
+                if Xk != Xj:
+                    queue.append((Xk, Xi))
+    return True</code></pre>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="errorMessage" class="alert alert-danger d-none mt-4">
+                    <i class="bi bi-exclamation-triangle-fill me-2"></i>
+                    <span class="error-text"></span>
                 </div>
             </div>
         </div>
     </div>
-
-    <!-- Introduction Card -->
-    <section class="section pt-3 pb-2">
-        <div class="container">
-            <div class="card intro-card">
-                <div class="card-content">
-                    <div class="content">
-                        <p class="is-size-5">This interactive demonstration explores two fundamental pathfinding algorithms—<strong>Dijkstra's algorithm</strong> and <strong>A*</strong>—applied to real-world routing between <strong>Amizour</strong> and <strong>Bejaia</strong> in Algeria. Select an algorithm below to visualize the shortest path calculation.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <!-- Main Demo Section -->
-    <section id="demo-section" class="section pt-3">
-        <div class="container">
-            <div class="columns">
-                <!-- Controls -->
-                <div class="column is-4">
-                    <div class="box info-panel has-shadow">
-                        <div class="card-header-title is-centered mb-2">
-                            <span class="icon mr-2"><i class="fas fa-directions"></i></span>
-                            <span class="has-text-weight-bold is-size-4">Route Analysis</span>
-                        </div>
-                        
-                        <div class="route-details has-background-light p-4 mb-4 has-radius">
-                            <div class="level mb-2">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        <span class="icon is-medium has-text-success">
-                                            <i class="fas fa-map-marker-alt fa-lg"></i>
-                                        </span>
-                                    </div>
-                                    <div class="level-item">
-                                        <div>
-                                            <p class="heading">Starting Point</p>
-                                            <p class="title is-5">Amizour</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                            <div class="has-text-centered py-2">
-                                <span class="icon has-text-grey-light">
-                                    <i class="fas fa-ellipsis-v fa-lg"></i>
-                                </span>
-                            </div>
-                            <div class="level mt-2">
-                                <div class="level-left">
-                                    <div class="level-item">
-                                        <span class="icon is-medium has-text-danger">
-                                            <i class="fas fa-map-pin fa-lg"></i>
-                                        </span>
-                                    </div>
-                                    <div class="level-item">
-                                        <div>
-                                            <p class="heading">Destination</p>
-                                            <p class="title is-5">Bejaia</p>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="algorithm-selection mb-5">
-                            <p class="subtitle is-5 has-text-centered">Choose Algorithm</p>
-                            <div class="algorithm-toggles">
-                                <div class="algorithm-toggle" id="toggle-dijkstra">
-                                    <div class="algorithm-toggle-inner is-active">
-                                        <span class="icon"><i class="fas fa-route"></i></span>
-                                        <h4>Dijkstra</h4>
-                                        <p class="algo-tag">Complete Search</p>
-                                    </div>
-                                </div>
-                                <div class="algorithm-toggle" id="toggle-astar">
-                                    <div class="algorithm-toggle-inner">
-                                        <span class="icon"><i class="fas fa-star"></i></span>
-                                        <h4>A*</h4>
-                                        <p class="algo-tag">Heuristic</p>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="field">
-                            <div class="control">
-                                <button id="find-path-btn" class="button is-primary is-medium is-fullwidth">
-                                    <span class="icon">
-                                        <i class="fas fa-search"></i>
-                                    </span>
-                                    <span>Calculate Shortest Path</span>
-                                </button>
-                            </div>
-                        </div>
-                        
-                        <div id="loading" class="has-text-centered mt-4 is-hidden">
-                            <div class="loading-container">
-                                <div class="loading-spinner"></div>
-                                <p class="loading-text">Calculating optimal route...</p>
-                            </div>
-                        </div>
-                        
-                        <div id="path-info" class="path-results mt-5 is-hidden">
-                            <h4 class="title is-5 has-text-centered mb-4">Path Analysis</h4>
-                            
-                            <div class="result-item">
-                                <div class="result-icon has-background-info-light">
-                                    <i class="fas fa-ruler"></i>
-                                </div>
-                                <div class="result-data">
-                                    <div class="result-label">Distance</div>
-                                    <div class="result-value" id="distance-value">-</div>
-                                </div>
-                            </div>
-                            
-                            <div class="result-item">
-                                <div class="result-icon has-background-warning-light">
-                                    <i class="fas fa-code-branch"></i>
-                                </div>
-                                <div class="result-data">
-                                    <div class="result-label">Nodes Traversed</div>
-                                    <div class="result-value" id="nodes-value">-</div>
-                                </div>
-                            </div>
-                            
-                            <div class="result-item">
-                                <div class="result-icon has-background-primary-light">
-                                    <i class="fas fa-cogs"></i>
-                                </div>
-                                <div class="result-data">
-                                    <div class="result-label">Algorithm</div>
-                                    <div class="result-value" id="algorithm-value">-</div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="student-info mt-5 pt-4 has-text-centered">
-                            <div class="student-signature">
-                                <span class="student-prefix">Developed by</span>
-                                <div class="student-name">Haroun Himeur</div>
-                            </div>
-                            <p class="student-course">Algorithms & Data Structures</p>
-                        </div>
-                    </div>
-                </div>
-                
-                <!-- Map Panel -->
-                <div class="column is-8">
-                    <div class="map-panel">
-                        <div class="map-header">
-                            <h3 class="map-title">
-                                <span class="icon"><i class="fas fa-map"></i></span>
-                                Interactive Visualization
-                                <span class="map-subtitle">Amizour to Bejaia</span>
-                            </h3>
-                            <div class="map-legend">
-                                <div class="legend-item">
-                                    <span class="legend-color dijkstra-color"></span>
-                                    <span>Dijkstra's Path</span>
-                                </div>
-                                <div class="legend-item">
-                                    <span class="legend-color astar-color"></span>
-                                    <span>A* Path</span>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <div class="map-container has-shadow">
-                            <div id="map">
-                                <div class="has-text-centered initial-map-message">
-                                    <div class="map-placeholder-icon">
-                                        <i class="fas fa-map-marked-alt"></i>
-                                    </div>
-                                    <p>Select an algorithm and click "Calculate Shortest Path" to begin</p>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-    
-    <!-- Algorithm Comparison Section -->
-    <section id="comparison-section" class="section mt-4 algorithm-comparison-section has-background-light">
-        <div class="container">
-            <h2 class="title is-2 has-text-centered mb-6">
-                <span class="icon-text">
-                    <span class="icon has-text-primary">
-                        <i class="fas fa-exchange-alt"></i>
-                    </span>
-                    <span>Algorithm Comparison</span>
-                </span>
-            </h2>
-            
-            <div class="columns is-centered">
-                <div class="column is-5">
-                    <div class="comparison-card dijkstra">
-                        <div class="comparison-header">
-                            <div class="comparison-icon">
-                                <i class="fas fa-route"></i>
-                            </div>
-                            <h3 class="comparison-title">Dijkstra's Algorithm</h3>
-                        </div>
-                        <div class="comparison-body">
-                            <div class="comparison-feature">
-                                <span class="icon has-text-success"><i class="fas fa-check"></i></span>
-                                <span>Guarantees the shortest path</span>
-                            </div>
-                            <div class="comparison-feature">
-                                <span class="icon has-text-success"><i class="fas fa-check"></i></span>
-                                <span>Works with negative edges</span>
-                            </div>
-                            <div class="comparison-feature negative">
-                                <span class="icon has-text-danger"><i class="fas fa-times"></i></span>
-                                <span>Explores in all directions</span>
-                            </div>
-                            <div class="comparison-feature negative">
-                                <span class="icon has-text-danger"><i class="fas fa-times"></i></span>
-                                <span>Less efficient for long distances</span>
-                            </div>
-                            
-                            <div class="comparison-code">
-                                <pre><code>function dijkstra(graph, start, end):
-   distances[start] = 0
-   priorityQueue.add(start)
-   while priorityQueue not empty:
-      current = priorityQueue.extractMin()
-      if current == end:
-         return distances[current]
-      for each neighbor of current:
-         alt = distances[current] + weight(current, neighbor)
-         if alt < distances[neighbor]:
-            distances[neighbor] = alt
-            priorityQueue.add(neighbor)</code></pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <div class="column is-5">
-                    <div class="comparison-card astar">
-                        <div class="comparison-header">
-                            <div class="comparison-icon">
-                                <i class="fas fa-star"></i>
-                            </div>
-                            <h3 class="comparison-title">A* Algorithm</h3>
-                        </div>
-                        <div class="comparison-body">
-                            <div class="comparison-feature">
-                                <span class="icon has-text-success"><i class="fas fa-check"></i></span>
-                                <span>Directed towards the goal</span>
-                            </div>
-                            <div class="comparison-feature">
-                                <span class="icon has-text-success"><i class="fas fa-check"></i></span>
-                                <span>Typically more efficient</span>
-                            </div>
-                            <div class="comparison-feature negative">
-                                <span class="icon has-text-danger"><i class="fas fa-times"></i></span>
-                                <span>Requires a heuristic function</span>
-                            </div>
-                            <div class="comparison-feature negative">
-                                <span class="icon has-text-danger"><i class="fas fa-times"></i></span>
-                                <span>Heuristic must be admissible</span>
-                            </div>
-                            
-                            <div class="comparison-code">
-                                <pre><code>function astar(graph, start, end):
-   openSet.add(start)
-   gScore[start] = 0
-   fScore[start] = heuristic(start, end)
-   while openSet not empty:
-      current = node in openSet with lowest fScore
-      if current == end:
-         return reconstruct_path(current)
-      openSet.remove(current)
-      for each neighbor of current:
-         tentative_gScore = gScore[current] + distance(current, neighbor)
-         if tentative_gScore < gScore[neighbor]:
-            cameFrom[neighbor] = current
-            gScore[neighbor] = tentative_gScore
-            fScore[neighbor] = gScore[neighbor] + heuristic(neighbor, end)
-            if neighbor not in openSet:
-               openSet.add(neighbor)</code></pre>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            
-            <div class="complexity-table-container mt-6">
-                <h3 class="title is-4 has-text-centered mb-4">Performance Complexity</h3>
-                <table class="table is-fullwidth complexity-table">
-                    <thead>
-                        <tr>
-                            <th>Algorithm</th>
-                            <th>Time Complexity</th>
-                            <th>Space Complexity</th>
-                            <th>Complete</th>
-                            <th>Optimal</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr>
-                            <td><strong>Dijkstra</strong></td>
-                            <td>O((V + E) log V)</td>
-                            <td>O(V)</td>
-                            <td><span class="icon has-text-success"><i class="fas fa-check"></i></span></td>
-                            <td><span class="icon has-text-success"><i class="fas fa-check"></i></span></td>
-                        </tr>
-                        <tr>
-                            <td><strong>A*</strong></td>
-                            <td>O(E)</td>
-                            <td>O(V)</td>
-                            <td><span class="icon has-text-success"><i class="fas fa-check"></i></span></td>
-                            <td><span class="icon has-text-warning"><i class="fas fa-asterisk"></i></span> With admissible heuristic</td>
-                        </tr>
-                    </tbody>
-                </table>
-                
-                <div class="has-text-centered mt-5">
-                    <div class="author-footer">
-                        <span class="signature-icon"><i class="fas fa-code"></i></span>
-                        <span class="signature-name">Haroun Himeur</span>
-                        <span class="signature-divider">•</span>
-                        <span class="signature-course">Algorithm Analysis & Data Structures</span>
-                        <span class="signature-divider">•</span>
-                        <span class="signature-year">2023/2024</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </section>
-
-    <script src="{{ url_for('static', filename='js/main.js') }}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="/CPS_AI/static/js/main.js"></script>
 </body>
 </html>
